@@ -1,4 +1,4 @@
-# ATLASFLOW — Multi-Chain Onchain Analytics & Capital Flow Intelligence
+# ATLASFLOW: Multi-Chain Onchain Analytics & Capital Flow Intelligence
 
 ATLASFLOW is a production-style analytics platform designed to transform raw onchain activity into **decision-ready datasets, metrics, and insights**.
 
