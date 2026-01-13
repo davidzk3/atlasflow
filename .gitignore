@@ -1,0 +1,15 @@
+# Python / venv
+.venv/
+__pycache__/
+
+# dbt artifacts
+dbt/target/
+dbt/logs/
+logs/
+
+# data
+data/
+
+# OS
+.DS_Store
+Thumbs.db
