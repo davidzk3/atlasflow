@@ -160,3 +160,119 @@ One row per bridge event (per wallet per bridge-in event):
 - Liquidity marts:
   - `gold_liquidity_movement_daily`
   - `gold_liquidity_where_it_lives`
+
+---
+
+## 5) Segmentation & Performance Attribution
+
+### 5.1 `main_gold.gold_segment_performance_attribution`
+
+**Purpose**  
+Provides a segment-level view of wallet behavior, performance, and outcomes by combining trading activity, activation funnels, and post-bridge conversion signals.
+
+This mart is designed to answer:
+- Which wallet segments drive the most volume?
+- Which segments activate and retain?
+- Which segments successfully convert after bridging?
+
+**Grain**  
+`segment × chain`
+
+Each row represents an aggregated wallet segment on a given chain.
+
+---
+
+### Segment Construction
+
+Segments are defined as a combination of:
+
+1) **Volume Tier**
+- `whale` — total trading volume ≥ v1 whale threshold
+- `mid` — total trading volume ≥ v1 mid threshold
+- `tail` — remaining wallets
+
+Thresholds are deterministic in v1 and defined per chain for interpretability. Percentile-based thresholds are a planned improvement.
+
+2) **Activation Label**
+- `activated_7d` — second swap within 7 days of first swap
+- `activated_30d` — second swap within 30 days of first swap
+- `not_activated` — no second swap within 30 days
+
+**Segment Naming Convention**
+~~~text
+{volume_tier}__{activation_label}
+~~~
+
+Examples:
+- `whale__activated_7d`
+- `mid__activated_30d`
+- `tail__not_activated`
+
+---
+
+### Source Models
+- `main_silver.silver_trades_normalized`
+- `main_gold.gold_wallet_funnel`
+- `main_gold.gold_post_bridge_conversion`
+
+---
+
+### Core Dimensions
+- `segment` — combined volume tier and activation label
+- `chain` — chain where activity is measured
+
+---
+
+### Core Metrics
+
+- `wallets`  
+  Number of distinct wallets in the segment on that chain.
+
+- `avg_active_days`  
+  Average number of active trading days per wallet.
+
+- `avg_tx_count`  
+  Average number of swap transactions per wallet.
+
+- `total_volume_usd`  
+  Total USD trading volume contributed by the segment.
+
+- `avg_wallet_volume_usd`  
+  Average USD volume per wallet.
+
+- `avg_trade_usd`  
+  Average swap size in USD.
+
+- `bridge_conversion_rate`  
+  Share of wallets in the segment that converted to DEX usage after bridging into the chain.
+
+- `avg_time_to_first_swap_hours`  
+  Average hours from bridge-in to first swap for wallets that converted.
+
+---
+
+### Interpretation Notes
+
+- Segment metrics are behavioral, not balance-based.
+- A wallet may appear in different segments across chains.
+- `bridge_conversion_rate` is only meaningful for segments with bridge exposure.
+- Volume tiers in v1 are fixed thresholds; they are intended for interpretability, not statistical optimality.
+
+---
+
+### Primary Use Cases
+
+- Identifying high-impact wallet segments
+- Comparing conversion and retention quality across chains
+- Understanding whether growth is driven by whales or broad participation
+- Evaluating whether bridged capital leads to durable activity
+
+---
+
+### Known Limitations (v1)
+
+- Segments rely on Uniswap-only trading activity
+- No wallet clustering or entity resolution
+- No adjustment for wash trading or MEV actors
+- Volume thresholds are static and heuristic
+
