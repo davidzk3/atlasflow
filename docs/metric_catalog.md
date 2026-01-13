@@ -1,241 +1,162 @@
-# Metric Catalog
+# ATLASFLOW Metric Catalog
 
-This document defines the core metrics and gold marts produced by ATLASFLOW.
+This catalog defines the core **gold marts** and the metrics they expose.
+It is written to be unambiguous, reproducible, and suitable for BI + downstream analysis.
 
-Each metric is designed to be:
-- Clearly defined
-- Reproducible
-- Stable for downstream analytics and dashboards
-
-Unless stated otherwise, all metrics are computed daily.
-
----
-
-## Wallet Activity Metrics
-
-### gold_wallet_daily_activity
-
-**Grain**  
-One row per wallet, per chain, per day
-
-**Description**  
-Captures daily onchain activity and trading behavior for wallets interacting with supported protocols.
-
-**Key Fields**
-- `date`
-- `chain`
-- `wallet_address`
-- `transaction_count`
-- `swap_count`
-- `unique_tokens_traded`
-- `unique_pools_traded`
-- `total_volume_usd`
-
-**Use Cases**
-- Active wallet tracking
-- Power user identification
-- Behavioral segmentation inputs
+Conventions:
+- **Grain** describes the unique row key of the table.
+- All timestamps are assumed UTC for v1.
+- Chain values are normalized to lowercase (e.g., `ethereum`, `arbitrum`).
+- Wallet addresses are stored lowercase.
 
 ---
 
-## User Journey and Retention Metrics
+## 1) Trading and Wallet Activity
 
-### gold_wallet_funnel
+### 1.1 `main_gold.gold_wallet_daily_activity`
+
+**Purpose**  
+Daily wallet activity and trading intensity on supported DEX venues.
 
 **Grain**  
-One row per wallet
+`date × chain × wallet_address`
 
-**Description**  
-Models the progression of wallets through key engagement stages.
+**Source Models**
+- `main_silver.silver_trades_normalized`
 
-**Stages**
-- First onchain interaction
-- First DEX swap
-- First repeat swap
-- Retained at week 4
+**Core Dimensions**
+- `date` — day of activity (date truncated)
+- `chain` — chain where the swap occurred
+- `wallet_address` — trader / initiating wallet
 
-**Key Fields**
-- `wallet_address`
-- `first_seen_date`
-- `first_swap_date`
-- `second_swap_date`
-- `week_4_retained_flag`
+**Core Metrics**
+- `transaction_count` — count of distinct `tx_hash` for that wallet/day/chain
+- `swap_count` — count of swap events (rows) for that wallet/day/chain
+- `unique_tokens_touched` — distinct tokens interacted with (token_in + token_out)
+- `total_volume_usd` — sum of `amount_usd`
+- `avg_trade_usd` — average `amount_usd` per swap
+- `max_trade_usd` — max `amount_usd` per swap
 
-**Use Cases**
-- Funnel conversion analysis
-- Product engagement diagnostics
+**Interpretation Notes**
+- `transaction_count` may be ≤ `swap_count` if multiple swap events occur in a single tx.
+- `unique_tokens_touched` is activity-oriented (not holdings). It does not imply balance.
+
+**Primary Use Cases**
+- Active traders trend (DAW/WAU style rollups)
+- Identifying heavy users and whales
+- Inputs to segmentation and retention analyses
 
 ---
 
-### gold_retention_cohorts
+## 2) Cross-Chain Flows and Bridging
+
+### 2.1 `main_gold.gold_bridge_flows_daily`
+
+**Purpose**  
+Daily bridge flow summary across supported bridges and chain routes.
 
 **Grain**  
-One row per cohort, per retention window
+`date × bridge × source_chain × destination_chain`
 
-**Description**  
-Tracks retention over time based on a wallet’s first activity date.
+**Source Models**
+- `main_silver.silver_bridge_events_normalized`
 
-**Key Fields**
-- `cohort_week`
-- `weeks_since_first_activity`
-- `active_wallets`
-- `retention_rate`
+**Core Dimensions**
+- `date` — day of bridge event
+- `bridge` — `across` or `stargate`
+- `source_chain` — origin chain
+- `destination_chain` — destination chain
 
-**Use Cases**
-- Long-term engagement analysis
-- Cross-chain and cross-protocol comparisons
+**Core Metrics**
+- `unique_wallets` — count of distinct `wallet_address` bridging on that route/day
+- `tx_count` — count of distinct `tx_hash`
+- `total_amount_usd` — sum of `amount_usd` bridged
+
+**Interpretation Notes**
+- Flows represent bridge transactions, not necessarily net-new capital (wallets may cycle).
+- USD normalization depends on ingestion source pricing logic for v1.
+
+**Primary Use Cases**
+- Monitoring migration of capital across chains
+- Detecting route-level spikes and bridge dependency
+- Inputs to conversion analysis (bridge-in → usage)
 
 ---
 
-## Liquidity Metrics
+### 2.2 `main_gold.gold_post_bridge_conversion`
 
-### gold_liquidity_movement_daily
+**Purpose**  
+Quantifies activation and retention after a wallet bridges into a chain.
 
-**Grain**  
-One row per pool, per chain, per day
-
-**Description**  
-Tracks liquidity additions and removals over time.
-
-**Key Fields**
-- `date`
-- `chain`
-- `protocol`
-- `pool_id`
-- `liquidity_added_usd`
-- `liquidity_removed_usd`
-- `net_liquidity_change_usd`
-
-**Use Cases**
-- Liquidity churn monitoring
-- LP behavior analysis
-
----
-
-### gold_liquidity_where_it_lives
+This mart answers:
+- Do bridged wallets actually use the destination chain?
+- How fast do they convert into trading activity?
+- Do they stick around?
 
 **Grain**  
-One row per protocol, per chain, per day
+One row per bridge event (per wallet per bridge-in event):
+`wallet_address × bridge_time × arrival_chain`
 
-**Description**  
-Aggregates liquidity to identify concentration and venue dominance.
+**Source Models**
+- `main_silver.silver_bridge_events_normalized`
+- `main_bronze.bronze_uniswap_swaps` (v1 trade event source)
 
-**Key Fields**
-- `total_liquidity_usd`
-- `top_pool_liquidity_share`
-- `top_3_pools_liquidity_share`
-- `liquidity_concentration_index`
+**Core Dimensions**
+- `wallet_address` — bridging wallet (sender)
+- `bridge` — bridge used (`across` / `stargate`)
+- `arrival_chain` — destination chain of the bridge event
+- `bridge_time` — timestamp of bridge event
+- `bridge_date` — date truncated bridge_time
+- `bridge_tx_hash` — tx hash of bridge event
+- `bridged_amount_usd` — bridged size
 
-**Use Cases**
-- Liquidity resilience assessment
-- Concentration risk analysis
-
----
-
-## Bridge and Cross-Chain Metrics
-
-### gold_bridge_flows_daily
-
-**Grain**  
-One row per bridge, per source chain, per destination chain, per day
-
-**Description**  
-Tracks cross-chain capital movement via supported bridges.
-
-**Key Fields**
-- `date`
-- `bridge`
-- `source_chain`
-- `destination_chain`
-- `amount_usd`
-- `unique_wallets`
-
-**Supported Bridges**
-- Across
-- Stargate
-
-**Use Cases**
-- Capital migration analysis
-- Cross-chain demand monitoring
-
----
-
-### gold_post_bridge_conversion
-
-**Grain**  
-One row per wallet
-
-**Description**  
-Measures how wallets behave after bridging capital to a new chain.
-
-**Key Fields**
-- `wallet_address`
-- `bridge_used`
-- `bridge_date`
-- `time_to_first_swap_hours`
+**Core Metrics**
 - `converted_to_dex_user_flag`
+  - 1 if wallet executed any swap on the arrival chain after bridging
+  - 0 otherwise
+- `time_to_first_swap_hours`
+  - hours from `bridge_time` to first observed swap time on arrival chain
+  - null if no swap observed
 - `retained_after_bridge_flag`
+  - 1 if wallet swaps again between day 7 and day 30 after bridging
+  - 0 otherwise
 
-**Use Cases**
-- Bridge effectiveness evaluation
-- Post-bridge user activation analysis
+**Interpretation Notes**
+- v1 uses Uniswap swaps as the conversion event source; later versions should expand to:
+  - additional DEXs
+  - lending actions (Aave)
+  - staking (Lido)
+  - transfers / contract interactions
+- Retention definition is activity-based (behavior), not balance-based.
 
----
-
-## Wallet Identity and Segmentation
-
-### gold_wallet_clusters
-
-**Grain**  
-One row per wallet
-
-**Description**  
-Assigns wallets to behavioral clusters based on onchain activity patterns.
-
-**Feature Inputs**
-- Swap frequency
-- Average trade size
-- Token diversity
-- Pool diversity
-- Time-based activity patterns
-
-**Key Fields**
-- `wallet_address`
-- `cluster_id`
-- `cluster_label`
-
-**Use Cases**
-- Segment-level analysis
-- Targeted product or liquidity strategies
+**Primary Use Cases**
+- Measuring bridge route quality (who bridges and becomes active)
+- Comparing bridges (Across vs Stargate) on conversion speed
+- Understanding if migration leads to durable activity
 
 ---
 
-## Attribution Metrics
+## 3) Metric Quality and Caveats (v1)
 
-### gold_segment_performance_attribution
+### 3.1 Coverage
+- v1 conversion uses DEX swap events only.
+- v1 bridging uses sample extracts shaped like Dune outputs; replace with real exports for production coverage.
 
-**Grain**  
-One row per segment, per chain, per period
+### 3.2 Identity
+- Wallet clustering / entity resolution is out of scope for v1 marts.
+- Wallet addresses are treated as independent identities.
 
-**Description**  
-Attributes trading activity and growth metrics to wallet segments.
-
-**Key Fields**
-- `segment`
-- `chain`
-- `total_volume_usd`
-- `active_wallets`
-- `retention_rate`
-- `volume_growth_rate`
-
-**Use Cases**
-- Understanding which segments drive growth
-- Evaluating sustainability of activity
+### 3.3 Pricing
+- `amount_usd` assumes upstream USD logic; formal price joins will be added in later versions.
 
 ---
 
-## Notes on Metric Stability
+## 4) Planned Additions
 
-- Gold marts are treated as **stable contracts**
-- Any breaking change requires explicit versioning and documentation
-- Assumptions and known limitations are documented in `docs/assumptions_limits.md`
+- `gold_wallet_funnel` — stage-based journey (first seen → first swap → repeat usage)
+- `gold_retention_cohorts` — cohort retention curves (D7/D30)
+- `gold_wallet_clusters` — behavioral segmentation
+- `gold_segment_performance_attribution` — which segments drive volume and retention
+- Liquidity marts:
+  - `gold_liquidity_movement_daily`
+  - `gold_liquidity_where_it_lives`
