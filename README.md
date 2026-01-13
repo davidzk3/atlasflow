@@ -131,3 +131,10 @@ ATLASFLOW is built around a few core principles:
 - Add advanced flow graph analytics
 - Extend attribution frameworks across chains
 - Introduce automated anomaly detection and alerts
+
+## Proof Artifact
+
+The screenshot in `dashboards/screenshots/segment_volume_and_conversion.png`
+demonstrates how ATLASFLOW’s marts can be used to identify which wallet
+segments drive trading volume and post-bridge conversion by chain.
+
