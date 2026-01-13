@@ -1,0 +1,181 @@
+version: 2
+
+models:
+  - name: gold_wallet_daily_activity
+    description: Daily wallet activity and trading intensity by chain.
+    columns:
+      - name: date
+        tests:
+          - not_null
+      - name: chain
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["ethereum", "arbitrum"]
+      - name: wallet_address
+        tests:
+          - not_null
+      - name: transaction_count
+        tests:
+          - not_null
+      - name: swap_count
+        tests:
+          - not_null
+      - name: total_volume_usd
+        tests:
+          - not_null
+
+    tests:
+      - unique:
+          column_name: "date || '|' || chain || '|' || wallet_address"
+
+  - name: gold_bridge_flows_daily
+    description: Daily bridge flow summary by bridge and route.
+    columns:
+      - name: date
+        tests:
+          - not_null
+      - name: bridge
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["across", "stargate"]
+      - name: source_chain
+        tests:
+          - not_null
+      - name: destination_chain
+        tests:
+          - not_null
+      - name: unique_wallets
+        tests:
+          - not_null
+      - name: tx_count
+        tests:
+          - not_null
+      - name: total_amount_usd
+        tests:
+          - not_null
+
+    tests:
+      - unique:
+          column_name: "date || '|' || bridge || '|' || source_chain || '|' || destination_chain"
+
+  - name: gold_post_bridge_conversion
+    description: Measures conversion and retention after bridging into a chain.
+    columns:
+      - name: wallet_address
+        tests:
+          - not_null
+      - name: bridge
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["across", "stargate"]
+      - name: arrival_chain
+        tests:
+          - not_null
+      - name: bridge_time
+        tests:
+          - not_null
+      - name: converted_to_dex_user_flag
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: retained_after_bridge_flag
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+    tests:
+      - unique:
+          column_name: "wallet_address || '|' || cast(bridge_time as varchar) || '|' || arrival_chain"
+
+  - name: gold_wallet_funnel
+    description: Wallet funnel metrics (first swap and repeat usage activation).
+    columns:
+      - name: wallet_address
+        tests:
+          - not_null
+      - name: chain
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["ethereum", "arbitrum"]
+      - name: first_swap_date
+        tests:
+          - not_null
+      - name: activated_within_7d_flag
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: activated_within_30d_flag
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+    tests:
+      - unique:
+          column_name: "wallet_address || '|' || chain"
+
+  - name: gold_retention_cohorts
+    description: Weekly retention cohorts by chain.
+    columns:
+      - name: cohort_week
+        tests:
+          - not_null
+      - name: chain
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["ethereum", "arbitrum"]
+      - name: weeks_since_first
+        tests:
+          - not_null
+      - name: cohort_size
+        tests:
+          - not_null
+      - name: retained_wallets
+        tests:
+          - not_null
+      - name: retention_rate
+        tests:
+          - not_null
+
+    tests:
+      - unique:
+          column_name: "cast(cohort_week as varchar) || '|' || chain || '|' || cast(weeks_since_first as varchar)"
+
+  - name: gold_segment_performance_attribution
+    description: Segment-level performance and attribution metrics by chain.
+    columns:
+      - name: segment
+        tests:
+          - not_null
+      - name: chain
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["ethereum", "arbitrum"]
+      - name: wallets
+        tests:
+          - not_null
+      - name: total_volume_usd
+        tests:
+          - not_null
+      - name: bridge_conversion_rate
+        tests:
+          - not_null
