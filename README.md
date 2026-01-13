@@ -4,7 +4,7 @@ ATLASFLOW is a production-style analytics platform designed to transform raw onc
 
 The system focuses on how wallets behave, how liquidity moves, and how capital flows across chains, protocols, and bridges. It is built to support scalable analytics workflows using version-controlled models, reproducible pipelines, and BI-ready outputs.
 
-ATLASFLOW is intentionally structured like an internal analytics platform rather than a standalone dashboard or notebook.
+ATLASFLOW is intentionally structured like an internal analytics platform rather than a standalone dashboard or exploratory notebook.
 
 ---
 
@@ -13,10 +13,12 @@ ATLASFLOW is intentionally structured like an internal analytics platform rather
 ATLASFLOW covers the full onchain lifecycle across trading, liquidity, and cross-chain movement:
 
 - **Wallet activity and trading behavior** across chains and venues
-- **Liquidity movement and concentration**, including LP adds/removals and venue dominance
+- **Liquidity movement and concentration**, including LP adds, removals, and venue dominance
 - **Cross-chain capital flows** via major bridges
-- **Wallet clustering and segmentation** based on behavioral features
+- **Wallet clustering and segmentation** based on behavioral and volume features
 - **Attribution frameworks** to understand which segments drive volume, retention, and growth
+
+The emphasis is on behavioral signals and capital movement rather than static balances.
 
 ---
 
@@ -55,14 +57,14 @@ ATLASFLOW produces curated, analytics-ready tables intended for BI tools, downst
 - `gold_wallet_clusters`
 - `gold_segment_performance_attribution`
 
-Each mart is designed with explicit metric definitions, data contracts, and test coverage.
+Each mart is designed with an explicit grain, clear metric definitions, and dbt test coverage enforcing data quality and consistency.
 
 ---
 
 ## Architecture Overview
 
 1. **Ingestion**  
-   - EVM data via curated SQL queries (e.g. Dune / Flipside APIs)  
+   - EVM data via curated SQL queries (e.g. Dune or Flipside APIs)  
    - Solana data via indexed APIs for program and wallet activity  
 
 2. **Storage and Modeling**  
@@ -84,7 +86,7 @@ Each mart is designed with explicit metric definitions, data contracts, and test
 
 Key directories:
 
-- `src/` — ingestion, transformations, analytics logic
+- `src/` — ingestion, transformations, and analytics logic
 - `dbt/` — version-controlled data models and tests
 - `docs/` — architecture, metric definitions, and analytical playbooks
 - `memos/` — written insights derived from the data
@@ -108,19 +110,21 @@ Key directories:
 Local setup and execution instructions are added incrementally as components are implemented:
 
 - Python environment setup
-- DuckDB + dbt configuration
-- Initial ingestion scripts and models
-- Incremental backfills and daily runs
+- DuckDB and dbt configuration
+- Initial ingestion scripts and core models
+- Incremental backfills and local runs
+
+The project is designed to run end-to-end locally using DuckDB and dbt.
 
 ---
 
 ## Design Principles
 
-ATLASFLOW is built around a few core principles:
+ATLASFLOW is built around a small set of core principles:
 
 - **Analytics over dashboards** — metrics and models come first
-- **Reproducibility** — version-controlled logic, deterministic outputs
-- **Data quality by default** — tests, sanity checks, and freshness expectations
+- **Reproducibility** — version-controlled logic and deterministic outputs
+- **Data quality by default** — tests, constraints, and explicit assumptions
 - **Decision orientation** — outputs are designed to inform product, trading, and growth decisions
 
 ---
@@ -128,13 +132,14 @@ ATLASFLOW is built around a few core principles:
 ## Roadmap
 
 - Expand Solana coverage and normalization
-- Add advanced flow graph analytics
+- Add advanced flow and graph-based analytics
 - Extend attribution frameworks across chains
-- Introduce automated anomaly detection and alerts
+- Introduce automated anomaly detection and alerting
+
+---
 
 ## Proof Artifact
 
 The screenshot in `dashboards/screenshots/segment_volume_and_conversion.png`
 demonstrates how ATLASFLOW’s marts can be used to identify which wallet
 segments drive trading volume and post-bridge conversion by chain.
-
