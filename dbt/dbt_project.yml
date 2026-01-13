@@ -23,10 +23,6 @@ models:
   atlasflow:
     +materialized: view
 
-    sanity:
-      +schema: sanity
-      +materialized: view
-
     bronze:
       +schema: bronze
       +materialized: view
